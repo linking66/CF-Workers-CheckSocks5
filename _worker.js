@@ -4512,7 +4512,7 @@ function generateHTML(备案内容) {
 			{ header: 'EXIT_COMPANY_TYPE', path: 'exit.company.type' },
 			{ header: 'EXIT_COMPANY_NETWORK', path: 'exit.company.network' },
 			{ header: 'EXIT_COMPANY_WHOIS', path: 'exit.company.whois' },
-			{ header: 'EXIT_ASN', path: 'exit.asnInfo.asn' },
+			{ header: 'EXIT_ASN', path: 'exit.asn' },
 			{ header: 'EXIT_ASN_ABUSER_SCORE', path: 'exit.asnInfo.abuser_score' },
 			{ header: 'EXIT_ASN_ROUTE', path: 'exit.asnInfo.route' },
 			{ header: 'EXIT_ASN_DESCR', path: 'exit.asnInfo.descr' },
@@ -4937,12 +4937,12 @@ function generateHTML(备案内容) {
 		}
 
 		function formatExitAsnDetail(exitData) {
-			const asn = firstNonEmpty(exitData?.asn, exitData?.asnInfo?.asn);
+			const asn = normalizeAsn(firstNonEmpty(exitData?.asn, exitData?.asnInfo?.asn));
 			const route = firstNonEmpty(exitData?.asnInfo?.route);
 			const org = firstNonEmpty(exitData?.asnInfo?.org, exitData?.asOrganization);
 			return firstNonEmpty(
 				joinNonEmptyValues([
-					asn ? 'AS' + asn : '',
+					asn ? asn : '',
 					route || org
 				], ' / '),
 				'未知'
@@ -6238,10 +6238,10 @@ function generateHTML(备案内容) {
 			const exitData = getPreferredTextExportProbe(data)?.exit || {};
 			const country = normalizeExportValue(exitData.country);
 			const city = normalizeExportValue(exitData.city);
-			const asn = normalizeExportValue(exitData.asn);
+			const asn = normalizeAsn(exitData.asn);
 			const asOrganization = normalizeExportValue(exitData.asOrganization);
 			const locationSegment = [country, city].filter(Boolean).join(' ') + buildTextExportTypeTag(exitData);
-			const networkSegment = [asn ? 'AS' + asn : '', asOrganization].filter(Boolean).join(' ') + buildTextExportRiskTag(exitData);
+			const networkSegment = [asn ? asn : '', asOrganization].filter(Boolean).join(' ') + buildTextExportRiskTag(exitData);
 			const description = [locationSegment, networkSegment].filter(Boolean).join(' ');
 			return exportTarget + (description ? '#' + description : '');
 		}
@@ -6535,15 +6535,15 @@ function generateHTML(备案内容) {
 		}
 
 		function formatExitNetwork(exitData) {
-			const asn = String(exitData?.asn || '').trim();
+			const asn = normalizeAsn(exitData?.asn);
 			const organization = String(exitData?.asOrganization || '').trim();
 
 			if (asn && organization) {
-				return 'AS' + asn + ' · ' + organization;
+				return asn + ' · ' + organization;
 			}
 
 			if (asn) {
-				return 'AS' + asn;
+				return asn;
 			}
 
 			return organization;
@@ -6690,6 +6690,13 @@ function generateHTML(备案内容) {
 			return '';
 		}
 
+		function normalizeAsn(raw) {
+			if (raw == null) return null;
+			const s = String(raw).trim();
+			if (!s) return null;
+			return s.toUpperCase().startsWith('AS') ? s.toUpperCase() : 'AS' + s;
+		}
+
 		function normalizeExitData(exit) {
 			if (!exit || typeof exit !== 'object') return null;
 
@@ -6702,7 +6709,7 @@ function generateHTML(备案内容) {
 				exit.loc,
 				latitude !== '' && longitude !== '' ? String(latitude) + ',' + String(longitude) : ''
 			);
-			const asn = firstNonEmpty(typeof exit.asn === 'object' ? '' : exit.asn, asnInfo.asn);
+			const asn = normalizeAsn(firstNonEmpty(typeof exit.asn === 'object' ? '' : exit.asn, asnInfo.asn));
 			const asOrganization = firstNonEmpty(exit.asOrganization, exit.org, asnInfo.org, asnInfo.descr, asnInfo.name, company.name);
 			let countryCode = firstNonEmpty(exit.countryCode, exit.country_code, location.country_code, asnInfo.country);
 			if (/^[a-z]{2}$/i.test(String(countryCode || '').trim())) {
@@ -6717,7 +6724,7 @@ function generateHTML(备案内容) {
 				asn: asn,
 				asnInfo: asnInfo,
 				asOrganization: asOrganization,
-				org: firstNonEmpty(exit.org, asn ? 'AS' + asn + (asOrganization ? ' ' + asOrganization : '') : asOrganization),
+				org: firstNonEmpty(exit.org, asn ? asn + (asOrganization ? ' ' + asOrganization : '') : asOrganization),
 				continent: firstNonEmpty(exit.continent, location.continent),
 				country: firstNonEmpty(exit.country, countryCode, countryName),
 				countryCode: countryCode,
