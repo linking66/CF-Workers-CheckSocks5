@@ -1680,7 +1680,8 @@ function isIPv4(value) {
 async function handleResolve(input) {
 	let text = String(input || '').trim().split('#')[0].trim();
 	const proxy = splitProxyScheme(text);
-	if (proxy?.type === 'sstp') {
+	// sstp/https 依赖域名建立 TLS（SNI），须保留原始 host，不做 DNS 展平
+	if (proxy?.type === 'sstp' || proxy?.type === 'https') {
 		const parsed = parseProxyAddress(text, proxy.type, DEFAULT_PORTS[proxy.type]);
 		return [`${parsed.hostname}:${parsed.port}`];
 	}
@@ -5297,7 +5298,7 @@ function generateHTML(备案内容) {
 
 		function getDirectProxyTarget(input) {
 			const parsed = parseProxyUrl(input);
-			if (parsed.scheme === 'sstp') return parsed.normalized;
+			if (parsed.scheme === 'sstp' || parsed.scheme === 'https') return parsed.normalized;
 			return isClientIpAddress(parsed.hostPlain) ? parsed.normalized : '';
 		}
 
@@ -5315,7 +5316,7 @@ function generateHTML(备案内容) {
 
 		function replaceProxyHost(proxyUrl, resolvedTarget) {
 			const parsed = parseProxyUrl(proxyUrl);
-			if (parsed.scheme === 'sstp') return parsed.normalized;
+			if (parsed.scheme === 'sstp' || parsed.scheme === 'https') return parsed.normalized;
 			const target = parseResolvedTarget(resolvedTarget);
 			return normalizeParsedProxyParts(parsed.scheme, parsed.auth, target.host, target.port || parsed.port).normalized;
 		}
